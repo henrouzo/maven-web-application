@@ -1,0 +1,36 @@
+node{
+       def mavenHome = tool name: '3.8.6'
+	stage('1clonecode'){
+	git 'https://github.com/henrouzo/maven-web-application'
+	}
+	stage('2mavenbuild'){
+	sh "${mavenHome}/bin/mvn package"
+	}
+	stage('3codequality'){
+	sh "${mavenHome}/bin/mvn sonar:sonar"
+	}
+	stage('4uploadtoartifact'){
+	sh "${mavenHome}/bin/mvn deploy"
+	}
+	stage('5deploy2UAT'){
+	deploy adapters: [tomcat9(credentialsId: 'b732886e-a846-43f5-9b79-4d80ca40b7fe', path: '', url: 'http://18.216.250.251:8080/')], contextPath: null, war: 'target/*war'
+
+	}
+	stage('6manualapproval'){
+	sh "echo 'ready for review' "
+	timeout(time:5, unit: 'HOURS') {
+	input message: 'Application ready for deployment, please review and approve'
+	}
+	stage('7deploy2prod'){
+	deploy adapters: [tomcat9(credentialsId: 'b732886e-a846-43f5-9b79-4d80ca40b7fe', path: '', url: 'http://18.216.250.251:8080/')], contextPath: null, war: 'target/*war'
+	}
+	stage('8emailnotify'){
+	emailext body: '''Hello team Build is done.
+
+
+
+    Fogichenro''', recipientProviders: [developers()], subject: 'Build status', to: 'henrouzo@gmail.com'
+	}
+
+	}
+}
